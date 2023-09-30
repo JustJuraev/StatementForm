@@ -26,47 +26,32 @@ type StatementStruct struct {
 
 type User struct {
 	Id       int    `json:"id"`
-	Name     string `json:"name"`
+	Login    string `json:"login"`
 	Password string `json:"password"`
 	Token    string `json:"token"`
+	Name     string `json:"name"`
+	LastName string `json:"lastname"`
 }
 
+var users = []User{}
+
 func AddStatement(page http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("html_files/addstatement.html", "html_files/header.html")
-	if err != nil {
-		panic(err)
+
+	if len(users) > 0 {
+		tmpl, err := template.ParseFiles("html_files/addstatement.html", "html_files/header.html")
+		if err != nil {
+			panic(err)
+		}
+
+		tmpl.ExecuteTemplate(page, "addstatement", users[0])
+	} else {
+		tmpl, err := template.ParseFiles("html_files/warning.html", "html_files/header.html")
+		if err != nil {
+			panic(err)
+		}
+		tmpl.ExecuteTemplate(page, "warning", nil)
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		panic(err)
-	}
-	deserializedUser := User{}
-	err = json.Unmarshal([]byte(string(b)), &deserializedUser)
-	//fmt.Println(deserializedUser.Token)
-
-	//client := redis.NewClient(&redis.Options{
-	//		Addr:     "localhost:2222",
-	//		Password: "", // no password set
-	//		DB:       0,  // use default DB
-	//})
-	//	ctx := context.Background()
-	//var userSession = map[string]string{}
-	//userSession = client.HGetAll(ctx, "user-session:123").Val()
-	fmt.Println(string(b))
-	fmt.Println(deserializedUser.Token)
-	if string(b) != "" {
-		fmt.Println(32131)
-		livingTime := 1800 * time.Hour
-		expiration := time.Now().Add(livingTime)
-		cookie := http.Cookie{Name: "token", Value: deserializedUser.Token, Expires: expiration}
-		http.SetCookie(page, &cookie)
-		return
-	}
-
-	//fmt.Println(userSession)
-
-	tmpl.ExecuteTemplate(page, "addstatement", nil)
 }
 
 func AddStatementPost(page http.ResponseWriter, r *http.Request) {
@@ -75,6 +60,7 @@ func AddStatementPost(page http.ResponseWriter, r *http.Request) {
 	date := r.FormValue("date")
 	statement := r.FormValue("statement")
 	passportseries := r.FormValue("passportseries")
+	userid := r.FormValue("id")
 	time := time.Now()
 
 	connStr := "user=postgres password=123456 dbname=mygovdb sslmode=disable"
@@ -86,8 +72,21 @@ func AddStatementPost(page http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	_, err = db.Exec("INSERT INTO public.statements (name, lastname, date, status, statement, passportseries, time) VALUES ($1, $2, $3, $4, $5, $6, $7)", name, lastname, date, 100, statement, passportseries, time)
+	_, err = db.Exec("INSERT INTO public.statements (name, lastname, date, status, statement, passportseries, time, userid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", name, lastname, date, 100, statement, passportseries, time, userid)
 
+	http.Redirect(page, r, "/", http.StatusSeeOther)
+}
+
+func index(page http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err)
+	}
+	deserializedUser := User{}
+	err = json.Unmarshal([]byte(string(b)), &deserializedUser)
+
+	users = append(users, deserializedUser)
+	fmt.Println(deserializedUser.Token)
 	http.Redirect(page, r, "/", http.StatusSeeOther)
 }
 
@@ -96,6 +95,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	http.HandleFunc("/", AddStatement)
 	http.HandleFunc("/adding_statement", AddStatementPost)
+	http.HandleFunc("/index", index)
 
 	http.ListenAndServe(":8080", nil)
 }
