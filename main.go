@@ -36,7 +36,7 @@ type User struct {
 var users = []User{}
 
 func AddStatement(page http.ResponseWriter, r *http.Request) {
-
+	//fmt.Println(users)
 	if len(users) > 0 {
 		tmpl, err := template.ParseFiles("html_files/addstatement.html", "html_files/header.html")
 		if err != nil {
@@ -51,7 +51,6 @@ func AddStatement(page http.ResponseWriter, r *http.Request) {
 		}
 		tmpl.ExecuteTemplate(page, "warning", nil)
 	}
-
 }
 
 func AddStatementPost(page http.ResponseWriter, r *http.Request) {
@@ -86,7 +85,7 @@ func index(page http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal([]byte(string(b)), &deserializedUser)
 
 	users = append(users, deserializedUser)
-	fmt.Println(deserializedUser.Token)
+	fmt.Println(deserializedUser)
 	http.Redirect(page, r, "/", http.StatusSeeOther)
 }
 
